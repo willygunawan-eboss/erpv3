@@ -1,231 +1,191 @@
-import React, { useState } from 'react';
-import { X } from 'lucide-react';
-import { Search, Filter, Download, ArrowUpRight, ArrowDownRight, Package, Box, AlertTriangle, Plus } from 'lucide-react';
-import { useProducts } from '../data';
-import { cn } from '../lib/utils';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, Plus, Package, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
 
 export function InventoryView() {
-  const { data: products } = useProducts();
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+  const [products, setProducts] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'products' | 'transactions'>('products');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [prodRes, txRes] = await Promise.all([
+        fetch('/api/products').then(res => res.json()),
+        fetch('/api/inventory-transactions').then(res => res.json())
+      ]);
+      if (prodRes.success) setProducts(prodRes.data || []);
+      if (txRes.success) setTransactions(txRes.data || []);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
   };
 
+  const totalStock = products.reduce((acc, p) => acc + (p.stock || 0), 0);
+  const lowStockCount = products.filter(p => p.stock < 10).length;
+
   return (
-    <div className="flex flex-col h-full max-w-[1600px] mx-auto w-full">
-      <div className="p-8 pb-0">
-        <div className="flex justify-between items-end mb-6">
+    <div className="flex flex-col h-full max-w-[1600px] mx-auto w-full animate-in fade-in duration-300">
+      <div className="p-4 md:p-8 pb-0">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Inventory & Stock</h1>
-            <p className="text-slate-500 mt-1 text-sm">Manage products, stock levels, and warehouse operations.</p>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Inventory Management</h1>
+            <p className="text-slate-500 mt-1 text-sm">Track stock levels across products in real-time.</p>
           </div>
-          <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-600/20 flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Add Product
-          </button>
         </div>
       </div>
 
-      <div className="flex-1 p-8 overflow-y-auto space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           <div className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-sm flex flex-col relative overflow-hidden group hover:border-slate-300 transition-colors">
             <div className="flex justify-between items-start mb-4 relative z-10">
-              <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
+              <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-600">
                 <Package className="w-5 h-5" />
-              </div>
-              <div className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700">
-                <ArrowUpRight className="w-3 h-3" />
-                +5.4%
               </div>
             </div>
             <div className="relative z-10">
               <h3 className="text-slate-500 text-sm font-medium mb-1">Total Products</h3>
-              <p className="text-2xl font-bold text-slate-900 tracking-tight">1,248</p>
+              <p className="text-2xl font-bold text-slate-900 tracking-tight">{products.length}</p>
             </div>
           </div>
-
+          
           <div className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-sm flex flex-col relative overflow-hidden group hover:border-slate-300 transition-colors">
             <div className="flex justify-between items-start mb-4 relative z-10">
               <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
-                <Box className="w-5 h-5" />
-              </div>
-              <div className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700">
-                <ArrowUpRight className="w-3 h-3" />
-                +2.1%
+                <Activity className="w-5 h-5" />
               </div>
             </div>
             <div className="relative z-10">
-              <h3 className="text-slate-500 text-sm font-medium mb-1">Inventory Value</h3>
-              <p className="text-2xl font-bold text-slate-900 tracking-tight">Rp 8.5B</p>
+              <h3 className="text-slate-500 text-sm font-medium mb-1">Total Stock Items</h3>
+              <p className="text-2xl font-bold text-slate-900 tracking-tight">{totalStock}</p>
             </div>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-sm flex flex-col relative overflow-hidden group hover:border-slate-300 transition-colors">
             <div className="flex justify-between items-start mb-4 relative z-10">
               <div className="p-2.5 rounded-lg bg-amber-50 text-amber-600">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md bg-rose-50 text-rose-700">
-                <ArrowDownRight className="w-3 h-3" />
-                -1.2%
+                <ArrowDownRight className="w-5 h-5" />
               </div>
             </div>
             <div className="relative z-10">
               <h3 className="text-slate-500 text-sm font-medium mb-1">Low Stock Alerts</h3>
-              <p className="text-2xl font-bold text-slate-900 tracking-tight">24</p>
+              <p className="text-2xl font-bold text-slate-900 tracking-tight">{lowStockCount}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden flex flex-col">
+          <div className="border-b border-slate-100 flex overflow-x-auto hide-scrollbar">
+             <button 
+                onClick={() => setActiveTab('products')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'products' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+             >
+                Product Master List
+             </button>
+             <button 
+                onClick={() => setActiveTab('transactions')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'transactions' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+             >
+                Inventory Movement (IN/OUT)
+             </button>
+          </div>
+          
           <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <h3 className="text-base font-bold text-slate-900">Product Inventory</h3>
             <div className="flex gap-2 w-full sm:w-auto">
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input 
                   type="text" 
-                  placeholder="Search products or SKU..." 
+                  placeholder={`Search ${activeTab}...`}
                   className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
-              <button className="flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors w-full sm:w-auto">
-                <Filter className="w-4 h-4" />
-                Filter
-              </button>
             </div>
           </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="text-[11px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50/80 border-b border-slate-100">
-                  <th className="px-6 py-3">Product Name</th>
-                  <th className="px-6 py-3">SKU</th>
-                  <th className="px-6 py-3">Category</th>
-                  <th className="px-6 py-3 text-right">Unit Price</th>
-                  <th className="px-6 py-3 text-right">Stock Level</th>
-                  <th className="px-6 py-3">Status</th>
-                </tr>
+                {activeTab === 'products' ? (
+                  <tr className="text-[11px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50/80 border-b border-slate-100">
+                    <th className="px-6 py-3">SKU</th>
+                    <th className="px-6 py-3">Product Name</th>
+                    <th className="px-6 py-3">Category</th>
+                    <th className="px-6 py-3 text-right">Price</th>
+                    <th className="px-6 py-3 text-right">Current Stock</th>
+                    <th className="px-6 py-3 text-center">Status</th>
+                  </tr>
+                ) : (
+                  <tr className="text-[11px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50/80 border-b border-slate-100">
+                    <th className="px-6 py-3">Date</th>
+                    <th className="px-6 py-3">Product ID</th>
+                    <th className="px-6 py-3">Type</th>
+                    <th className="px-6 py-3 text-right">Quantity</th>
+                    <th className="px-6 py-3">Ref ID</th>
+                    <th className="px-6 py-3">Ref Type</th>
+                  </tr>
+                )}
               </thead>
               
               <tbody className="divide-y divide-slate-100 text-sm">
-                {products.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-slate-500">
-                      No records found.
-                    </td>
-                  </tr>
+                {loading ? (
+                   <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">Loading data...</td></tr>
+                ) : activeTab === 'products' ? (
+                  products.length === 0 ? (
+                    <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">No products found.</td></tr>
+                  ) : (
+                    products.map((p, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 font-mono text-xs text-slate-500">{p.sku}</td>
+                        <td className="px-6 py-4 font-medium text-slate-900">{p.name}</td>
+                        <td className="px-6 py-4 text-slate-600">{p.category}</td>
+                        <td className="px-6 py-4 text-slate-900 font-medium text-right">IDR {p.price.toLocaleString()}</td>
+                        <td className={`px-6 py-4 font-bold text-right ${p.stock < 10 ? 'text-rose-600' : 'text-slate-700'}`}>{p.stock}</td>
+                        <td className="px-6 py-4 text-center">
+                           <span className={`inline-flex items-center px-2 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider ${
+                             p.stock > 10 ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20' : 
+                             p.stock > 0 ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20' :
+                             'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20'
+                           }`}>
+                              {p.stock > 10 ? 'In Stock' : p.stock > 0 ? 'Low Stock' : 'Out of Stock'}
+                           </span>
+                        </td>
+                      </tr>
+                    ))
+                  )
                 ) : (
-                  products.map((p, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 font-medium text-slate-900">{p.name}</td>
-                      <td className="px-6 py-4 text-slate-600">{p.sku}</td>
-                      <td className="px-6 py-4 text-slate-600">{p.category}</td>
-                      <td className="px-6 py-4 text-right text-slate-900">{formatCurrency(p.price)}</td>
-                      <td className="px-6 py-4 text-right text-slate-900 font-medium">{p.stock}</td>
-                      <td className="px-6 py-4">
-                        <span className={"px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase " + (p.status === 'In Stock' ? 'bg-emerald-100 text-emerald-700' : p.status === 'Low Stock' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700')}>
-                          {p.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                  transactions.length === 0 ? (
+                    <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">No transactions found.</td></tr>
+                  ) : (
+                    transactions.map((tx, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{new Date(tx.date).toLocaleString()}</td>
+                        <td className="px-6 py-4 font-medium text-slate-900">{tx.productId}</td>
+                        <td className="px-6 py-4">
+                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase ${
+                             tx.type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                           }`}>
+                             {tx.type === 'IN' ? <ArrowDownRight className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
+                             {tx.type}
+                           </span>
+                        </td>
+                        <td className="px-6 py-4 font-mono text-slate-700 text-right">{tx.quantity}</td>
+                        <td className="px-6 py-4 font-mono text-xs text-slate-500">{tx.referenceId}</td>
+                        <td className="px-6 py-4 text-slate-600 font-medium">{tx.referenceType}</td>
+                      </tr>
+                    ))
+                  )
                 )}
               </tbody>
-
             </table>
           </div>
         </div>
       </div>
-
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center p-5 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">Add New Product</h2>
-              <button 
-                onClick={() => setIsAddModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto custom-scrollbar">
-              <form 
-                className="space-y-4"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const newProduct = {
-                    name: (formData.get('name') as string),
-                    sku: (formData.get('sku') as string),
-                    category: (formData.get('category') as string),
-                    price: parseFloat((formData.get('price') as string)),
-                    stock: parseInt((formData.get('stock') as string)),
-                    status: 'In Stock'
-                  };
-                  try {
-                    const res = await fetch('/api/products', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(newProduct)
-                    });
-                    if (res.ok) {
-                      setIsAddModalOpen(false);
-                      alert('Product added successfully!');
-                      window.dispatchEvent(new Event('refetch-products'));
-                    } else {
-                      alert('Error adding product');
-                    }
-                  } catch (err) {
-                    alert('Network error');
-                  }
-                }}
-              >
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Product Name</label>
-                  <input required type="text" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" name="name" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">SKU</label>
-                    <input required type="text" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" name="sku" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Category</label>
-                    <input required type="text" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" name="category" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Unit Price (IDR)</label>
-                    <input required type="number" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" name="price" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Initial Stock</label>
-                    <input required type="number" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" name="stock" />
-                  </div>
-                </div>
-                <div className="pt-4 flex justify-end gap-3 border-t border-slate-100 mt-6">
-                  <button 
-                    type="button" 
-                    onClick={() => setIsAddModalOpen(false)} 
-                    className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-                  >
-                    Save Product
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

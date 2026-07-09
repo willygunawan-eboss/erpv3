@@ -1,3 +1,4 @@
+import fs from "fs";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -85,7 +86,7 @@ const authMiddleware = async (req, res, next) => {
   if (token) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      req.user = decoded;
+      (req as any).user = decoded;
       return next();
     } catch (e) {
       // Token invalid or expired, fall through to refresh
@@ -95,12 +96,12 @@ const authMiddleware = async (req, res, next) => {
   if (refreshToken) {
     try {
       const decodedRefresh = jwt.verify(refreshToken, REFRESH_SECRET);
-      const result = await db.select().from(schema.users).where(eq(schema.users.id, decodedRefresh.id));
+      const result = await db.select().from(schema.users).where(eq(schema.users.id, (decodedRefresh as jwt.JwtPayload).id));
       if (result.length > 0 && result[0].refreshToken === refreshToken) {
         const user = result[0];
         const newToken = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '15m' });
         res.cookie('token', newToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: 15 * 60 * 1000 });
-        req.user = { id: user.id, username: user.username, role: user.role };
+        (req as any).user = { id: user.id, username: user.username, role: user.role };
         return next();
       }
     } catch (e) {
@@ -175,7 +176,7 @@ app.post('/api/auth/logout', async (req, res) => {
 });
 
 app.get('/api/auth/me', (req, res) => {
-  if (req.user) return res.json({ success: true, user: req.user });
+  if ((req as any).user) return res.json({ success: true, user: (req as any).user });
   res.status(401).json({ success: false, message: 'Not authenticated' });
 });
 
@@ -398,31 +399,172 @@ app.get('/api/auth/me', (req, res) => {
   createPostRoute("/api/transactions", schema.transactions);
   
   // Custom Sales Order POST Route
-  app.post("/api/sales-orders", async (req, res) => {
+  app.get("/api/sales-orders", async (req, res) => {
     try {
-      const validatedData = salesOrderSchema.parse(req.body);
-      await db.insert(schema.salesOrders).values({ id: req.body.id || 'SO-' + Date.now(), ...validatedData });
-      
-      // Update dashboard stats revenue
-      const stats = await db.select().from(schema.dashboardStats).where(eq(schema.dashboardStats.id, 'main'));
-      if (stats.length > 0 && req.body.amount) {
-        await db.update(schema.dashboardStats)
-          .set({ monthlyRevenue: stats[0].monthlyRevenue + Number(req.body.amount) })
-          .where(eq(schema.dashboardStats.id, 'main'));
-      }
-      res.json({ success: true });
+      const orders = await db.select().from(schema.salesOrders);
+      const items = await db.select().from(schema.salesOrderItems);
+      const ordersWithItems = orders.map(order => ({
+        ...order,
+        items: items.filter(i => i.salesOrderId === order.id)
+      }));
+      res.json({ success: true, data: ordersWithItems });
     } catch (e) {
-      if (e instanceof z.ZodError) return res.status(400).json({ success: false, message: e.issues[0].message });
       res.status(500).json({ success: false, error: String(e) });
     }
   });
 
-  createPostRoute("/api/products", schema.products);
+  app.post("/api/sales-orders", async (req, res) => {
+    try {
+      const { items, ...orderData } = req.body;
+      const orderId = orderData.id || 'SO-' + Date.now();
+      
+      db.transaction((tx) => {
+        tx.insert(schema.salesOrders).values({ id: orderId, ...orderData }).run();
+        
+        if (items && items.length > 0) {
+          for (const item of items) {
+            const itemId = 'SOI-' + Math.random().toString(36).substr(2, 9);
+            tx.insert(schema.salesOrderItems).values({
+              id: itemId,
+              salesOrderId: orderId,
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price
+            }).run();
+
+            // Decrease inventory
+            tx.insert(schema.inventoryTransactions).values({
+              id: 'INV-TX-' + Math.random().toString(36).substr(2, 9),
+              productId: item.productId,
+              type: 'OUT',
+              quantity: item.quantity,
+              date: new Date().toISOString(),
+              referenceId: orderId,
+              referenceType: 'SO'
+            }).run();
+
+            // Update product stock
+            const product = tx.select().from(schema.products).where(eq(schema.products.id, item.productId)).get();
+            if (product) {
+               tx.update(schema.products).set({ stock: product.stock - item.quantity }).where(eq(schema.products.id, item.productId)).run();
+            }
+          }
+        }
+
+        // Update dashboard stats revenue
+        const stats = tx.select().from(schema.dashboardStats).where(eq(schema.dashboardStats.id, 'main')).get();
+        if (stats && orderData.amount) {
+          tx.update(schema.dashboardStats)
+            .set({ monthlyRevenue: stats.monthlyRevenue + Number(orderData.amount) })
+            .where(eq(schema.dashboardStats.id, 'main')).run();
+        }
+      });
+      
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ success: false, error: String(e) });
+    }
+  });
+
+  app.get("/api/purchase-orders", async (req, res) => {
+    try {
+      const orders = await db.select().from(schema.purchaseOrders);
+      const items = await db.select().from(schema.purchaseOrderItems);
+      const ordersWithItems = orders.map(order => ({
+        ...order,
+        items: items.filter(i => i.purchaseOrderId === order.id)
+      }));
+      res.json({ success: true, data: ordersWithItems });
+    } catch (e) {
+      res.status(500).json({ success: false, error: String(e) });
+    }
+  });
+
+  app.post("/api/purchase-orders", async (req, res) => {
+    try {
+      const { items, ...orderData } = req.body;
+      const orderId = orderData.id || 'PO-' + Date.now();
+      
+      db.transaction((tx) => {
+        tx.insert(schema.purchaseOrders).values({ id: orderId, ...orderData }).run();
+        
+        if (items && items.length > 0) {
+          for (const item of items) {
+            const itemId = 'POI-' + Math.random().toString(36).substr(2, 9);
+            tx.insert(schema.purchaseOrderItems).values({
+              id: itemId,
+              purchaseOrderId: orderId,
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price
+            }).run();
+
+            // Increase inventory
+            tx.insert(schema.inventoryTransactions).values({
+              id: 'INV-TX-' + Math.random().toString(36).substr(2, 9),
+              productId: item.productId,
+              type: 'IN',
+              quantity: item.quantity,
+              date: new Date().toISOString(),
+              referenceId: orderId,
+              referenceType: 'PO'
+            }).run();
+
+            // Update product stock
+            const product = tx.select().from(schema.products).where(eq(schema.products.id, item.productId)).get();
+            if (product) {
+               tx.update(schema.products).set({ stock: product.stock + item.quantity }).where(eq(schema.products.id, item.productId)).run();
+            }
+          }
+        }
+      });
+      
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ success: false, error: String(e) });
+    }
+  });
+
+  app.get("/api/inventory-transactions", async (req, res) => {
+    try {
+      const txs = await db.select().from(schema.inventoryTransactions);
+      res.json({ success: true, data: txs });
+    } catch (e) {
+      res.status(500).json({ success: false, error: String(e) });
+    }
+  });
+
+  app.get("/api/products", async (req, res) => {
+    try {
+      const products = await db.select().from(schema.products);
+      res.json({ success: true, data: products });
+    } catch (e) {
+      res.status(500).json({ success: false, error: String(e) });
+    }
+  });
+
+  app.post("/api/products", async (req, res) => {
+    try {
+      await db.insert(schema.products).values({ id: req.body.id || 'PRD-' + Date.now(), ...req.body });
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ success: false, error: String(e) });
+    }
+  });
+
   createPostRoute("/api/production-orders", schema.productionOrders);
   createGetRoute("/api/tasks", schema.tasks);
   createPostRoute("/api/tasks", schema.tasks);
   createGetRoute("/api/announcements", schema.announcements);
   createPostRoute("/api/announcements", schema.announcements);
+
+  // CRM Routes
+  createGetRoute("/api/customers", schema.customers);
+  createPostRoute("/api/customers", schema.customers);
+  createGetRoute("/api/leads", schema.leads);
+  createPostRoute("/api/leads", schema.leads);
+  createGetRoute("/api/activities", schema.activities);
+  createPostRoute("/api/activities", schema.activities);
   
   app.post("/api/tasks/:id/approve", async (req, res) => {
     try {

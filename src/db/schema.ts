@@ -302,3 +302,75 @@ export const invoiceItems = sqliteTable('invoice_items', {
   taxType: text('tax_type').default('No Tax Selected'),
   total: integer('total').notNull(),
 });
+
+export const purchaseOrders = sqliteTable('purchase_orders', {
+  id: text('id').primaryKey(),
+  vendor: text('vendor').notNull(),
+  date: text('date').notNull(),
+  amount: real('amount').notNull(),
+  status: text('status').notNull(), // Pending, Received, Cancelled
+});
+
+export const purchaseOrderItems = sqliteTable('purchase_order_items', {
+  id: text('id').primaryKey(),
+  purchaseOrderId: text('purchase_order_id').notNull(),
+  productId: text('product_id').notNull(),
+  quantity: integer('quantity').notNull(),
+  price: real('price').notNull(),
+});
+
+export const salesOrderItems = sqliteTable('sales_order_items', {
+  id: text('id').primaryKey(),
+  salesOrderId: text('sales_order_id').notNull(),
+  productId: text('product_id').notNull(),
+  quantity: integer('quantity').notNull(),
+  price: real('price').notNull(),
+});
+
+export const inventoryTransactions = sqliteTable('inventory_transactions', {
+  id: text('id').primaryKey(),
+  productId: text('product_id').notNull(),
+  type: text('type').notNull(), // IN, OUT
+  quantity: integer('quantity').notNull(),
+  date: text('date').notNull(),
+  referenceId: text('reference_id').notNull(), // PO or SO ID
+  referenceType: text('reference_type').notNull(), // PO, SO, MANUAL
+});
+
+export const customers = sqliteTable('customers', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  pic: text('pic').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone').notNull(),
+  address: text('address'),
+  npwp: text('npwp'),
+  status: text('status').notNull().default('Active'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const leads = sqliteTable('leads', {
+  id: text('id').primaryKey(),
+  companyName: text('company_name').notNull(),
+  pic: text('pic').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone').notNull(),
+  productInterest: text('product_interest'),
+  source: text('source').notNull(), // Website, Referral, etc.
+  status: text('status').notNull(), // New, Contacted, Qualified, Proposal, Negotiation, Won, Lost
+  score: integer('score').default(0),
+  owner: text('owner'),
+  estimatedValue: integer('estimated_value').default(0),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const activities = sqliteTable('activities', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(), // Call, Email, Meeting, WhatsApp
+  referenceId: text('reference_id').notNull(), // leadId or customerId
+  referenceType: text('reference_type').notNull(), // Lead, Customer
+  date: text('date').notNull(),
+  notes: text('notes').notNull(),
+  performedBy: text('performed_by').notNull(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
