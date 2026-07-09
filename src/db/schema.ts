@@ -374,3 +374,301 @@ export const activities = sqliteTable('activities', {
   performedBy: text('performed_by').notNull(),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
+
+// --- ENTERPRISE ITSM (HELPDESK & SUPPORT) SCHEMA ---
+
+export const ticketCategories = sqliteTable('ticket_categories', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketSubCategories = sqliteTable('ticket_sub_categories', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id').notNull().references(() => ticketCategories.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketPriorities = sqliteTable('ticket_priorities', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(), // Low, Medium, High, Critical
+  level: integer('level').notNull(), 
+  color: text('color'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketImpacts = sqliteTable('ticket_impacts', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  level: integer('level').notNull(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketUrgencies = sqliteTable('ticket_urgencies', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  level: integer('level').notNull(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketStatuses = sqliteTable('ticket_statuses', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  isClosed: integer('is_closed', { mode: 'boolean' }).default(false),
+  color: text('color'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const slas = sqliteTable('slas', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  responseTimeMinutes: integer('response_time_minutes').notNull(),
+  resolutionTimeMinutes: integer('resolution_time_minutes').notNull(),
+  priorityId: text('priority_id').references(() => ticketPriorities.id),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const tickets = sqliteTable('tickets', {
+  id: text('id').primaryKey(),
+  ticketNumber: text('ticket_number').notNull().unique(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  customerId: text('customer_id').references(() => customers.id),
+  assetId: text('asset_id').references(() => assets.id),
+  categoryId: text('category_id').references(() => ticketCategories.id),
+  subCategoryId: text('sub_category_id').references(() => ticketSubCategories.id),
+  priorityId: text('priority_id').references(() => ticketPriorities.id),
+  impactId: text('impact_id').references(() => ticketImpacts.id),
+  urgencyId: text('urgency_id').references(() => ticketUrgencies.id),
+  statusId: text('status_id').references(() => ticketStatuses.id),
+  slaId: text('sla_id').references(() => slas.id),
+  assignedTo: text('assigned_to').references(() => employees.id),
+  reportedBy: text('reported_by'), 
+  expectedResolutionDate: text('expected_resolution_date'),
+  actualResolutionDate: text('actual_resolution_date'),
+  resolutionNotes: text('resolution_notes'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketAttachments = sqliteTable('ticket_attachments', {
+  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => tickets.id),
+  fileName: text('file_name').notNull(),
+  fileUrl: text('file_url').notNull(),
+  fileType: text('file_type'),
+  fileSize: integer('file_size'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketComments = sqliteTable('ticket_comments', {
+  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => tickets.id),
+  comment: text('comment').notNull(),
+  isInternal: integer('is_internal', { mode: 'boolean' }).default(false),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketWorklogs = sqliteTable('ticket_worklogs', {
+  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => tickets.id),
+  employeeId: text('employee_id').notNull().references(() => employees.id),
+  timeSpentMinutes: integer('time_spent_minutes').notNull(),
+  workDate: text('work_date').notNull(),
+  description: text('description').notNull(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketTimelines = sqliteTable('ticket_timelines', {
+  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => tickets.id),
+  action: text('action').notNull(), 
+  description: text('description'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketWatchers = sqliteTable('ticket_watchers', {
+  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => tickets.id),
+  employeeId: text('employee_id').notNull().references(() => employees.id),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const tags = sqliteTable('tags', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  color: text('color'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketTags = sqliteTable('ticket_tags', {
+  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => tickets.id),
+  tagId: text('tag_id').notNull().references(() => tags.id),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+export const ticketAudits = sqliteTable('ticket_audits', {
+  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => tickets.id),
+  fieldName: text('field_name').notNull(),
+  oldValue: text('old_value'),
+  newValue: text('new_value'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  deletedAt: text('deleted_at'),
+  deletedBy: text('deleted_by'),
+});
+
+// --- ENTERPRISE ITSM RELATIONS ---
+import { relations } from 'drizzle-orm';
+
+export const ticketsRelations = relations(tickets, ({ one, many }) => ({
+  customer: one(customers, { fields: [tickets.customerId], references: [customers.id] }),
+  asset: one(assets, { fields: [tickets.assetId], references: [assets.id] }),
+  category: one(ticketCategories, { fields: [tickets.categoryId], references: [ticketCategories.id] }),
+  subCategory: one(ticketSubCategories, { fields: [tickets.subCategoryId], references: [ticketSubCategories.id] }),
+  priority: one(ticketPriorities, { fields: [tickets.priorityId], references: [ticketPriorities.id] }),
+  impact: one(ticketImpacts, { fields: [tickets.impactId], references: [ticketImpacts.id] }),
+  urgency: one(ticketUrgencies, { fields: [tickets.urgencyId], references: [ticketUrgencies.id] }),
+  status: one(ticketStatuses, { fields: [tickets.statusId], references: [ticketStatuses.id] }),
+  sla: one(slas, { fields: [tickets.slaId], references: [slas.id] }),
+  assignedEmployee: one(employees, { fields: [tickets.assignedTo], references: [employees.id] }),
+  reportedEmployee: one(employees, { fields: [tickets.reportedBy], references: [employees.id] }),
+  comments: many(ticketComments),
+  worklogs: many(ticketWorklogs),
+  attachments: many(ticketAttachments),
+  timelines: many(ticketTimelines),
+  watchers: many(ticketWatchers),
+  tags: many(ticketTags),
+  audits: many(ticketAudits),
+}));
+
+export const ticketCategoriesRelations = relations(ticketCategories, ({ many }) => ({
+  subCategories: many(ticketSubCategories),
+  tickets: many(tickets),
+}));
+
+export const ticketSubCategoriesRelations = relations(ticketSubCategories, ({ one, many }) => ({
+  category: one(ticketCategories, { fields: [ticketSubCategories.categoryId], references: [ticketCategories.id] }),
+  tickets: many(tickets),
+}));
+
+export const ticketCommentsRelations = relations(ticketComments, ({ one }) => ({
+  ticket: one(tickets, { fields: [ticketComments.ticketId], references: [tickets.id] }),
+  createdByEmployee: one(employees, { fields: [ticketComments.createdBy], references: [employees.id] }),
+}));
+
+export const ticketWorklogsRelations = relations(ticketWorklogs, ({ one }) => ({
+  ticket: one(tickets, { fields: [ticketWorklogs.ticketId], references: [tickets.id] }),
+  employee: one(employees, { fields: [ticketWorklogs.employeeId], references: [employees.id] }),
+}));
+
+export const ticketAttachmentsRelations = relations(ticketAttachments, ({ one }) => ({
+  ticket: one(tickets, { fields: [ticketAttachments.ticketId], references: [tickets.id] }),
+  createdByEmployee: one(employees, { fields: [ticketAttachments.createdBy], references: [employees.id] }),
+}));
+
+export const ticketTimelinesRelations = relations(ticketTimelines, ({ one }) => ({
+  ticket: one(tickets, { fields: [ticketTimelines.ticketId], references: [tickets.id] }),
+  createdByEmployee: one(employees, { fields: [ticketTimelines.createdBy], references: [employees.id] }),
+}));
+
+export const ticketWatchersRelations = relations(ticketWatchers, ({ one }) => ({
+  ticket: one(tickets, { fields: [ticketWatchers.ticketId], references: [tickets.id] }),
+  employee: one(employees, { fields: [ticketWatchers.employeeId], references: [employees.id] }),
+}));
+
+export const ticketTagsRelations = relations(ticketTags, ({ one }) => ({
+  ticket: one(tickets, { fields: [ticketTags.ticketId], references: [tickets.id] }),
+  tag: one(tags, { fields: [ticketTags.tagId], references: [tags.id] }),
+}));
+
+export const tagsRelations = relations(tags, ({ many }) => ({
+  ticketTags: many(ticketTags),
+}));
+
+export const slasRelations = relations(slas, ({ one, many }) => ({
+  priority: one(ticketPriorities, { fields: [slas.priorityId], references: [ticketPriorities.id] }),
+  tickets: many(tickets),
+}));

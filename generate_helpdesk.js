@@ -1,4 +1,8 @@
+import fs from 'fs';
+const file = 'src/components/HelpdeskView.tsx';
+let code = fs.readFileSync(file, 'utf8');
 
+const newCode = `
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, Edit, Trash2, RotateCcw, Eye, ChevronLeft, ChevronRight, RefreshCw, X, AlertTriangle, Clock, CheckCircle2, XCircle, Activity, Users, ShieldAlert, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -20,7 +24,6 @@ export function HelpdeskView() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentTicket, setCurrentTicket] = useState<any>(null);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [formData, setFormData] = useState({
@@ -69,7 +72,7 @@ export function HelpdeskView() {
     setLoading(true);
     try {
       const filterQuery = new URLSearchParams(filters as any).toString();
-      const res = await fetch(`/api/tickets?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&sortBy=${sortBy}&sortOrder=${sortOrder}&${filterQuery}`);
+      const res = await fetch(\`/api/tickets?page=\${page}&limit=\${limit}&search=\${encodeURIComponent(search)}&sortBy=\${sortBy}&sortOrder=\${sortOrder}&\${filterQuery}\`);
       const data = await res.json();
       if (data.success) {
         setTickets(data.data);
@@ -81,27 +84,6 @@ export function HelpdeskView() {
     setLoading(false);
   };
 
-  const getPriorityColor = (priorityName: string) => {
-    switch (priorityName?.toLowerCase()) {
-      case 'critical': return 'bg-rose-100 text-rose-700';
-      case 'high': return 'bg-orange-100 text-orange-700';
-      case 'medium': return 'bg-amber-100 text-amber-700';
-      case 'low': return 'bg-emerald-100 text-emerald-700';
-      default: return 'bg-slate-100 text-slate-600';
-    }
-  };
-
-  const getStatusColor = (statusName: string) => {
-    switch (statusName?.toLowerCase()) {
-      case 'new': return 'bg-sky-100 text-sky-700';
-      case 'in progress': return 'bg-indigo-100 text-indigo-700';
-      case 'pending customer': return 'bg-fuchsia-100 text-fuchsia-700';
-      case 'resolved': return 'bg-emerald-100 text-emerald-700';
-      case 'closed': return 'bg-slate-200 text-slate-700';
-      default: return 'bg-slate-100 text-slate-600';
-    }
-  };
-
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
     setPage(1);
@@ -109,19 +91,9 @@ export function HelpdeskView() {
 
   const openCreateModal = () => {
     setFormMode('create');
-    
-    // Default values if exist
-    const defCategory = references.categories[0]?.id || '';
-    const defSubCategory = references.subCategories.find((s)=>s.categoryId === defCategory)?.id || '';
-    
     setFormData({
-      title: '', description: '', customerId: '', 
-      categoryId: defCategory, 
-      subCategoryId: defSubCategory, 
-      priorityId: references.priorities[0]?.id || '', 
-      impactId: references.impacts[0]?.id || '', 
-      urgencyId: references.urgencies[0]?.id || '', 
-      assetId: '', assignedTo: '', reportedBy: '', statusId: references.statuses[0]?.id || ''
+      title: '', description: '', customerId: '', categoryId: '', subCategoryId: '', 
+      priorityId: '', impactId: '', urgencyId: '', assetId: '', assignedTo: '', reportedBy: '', statusId: references.statuses[0]?.id || ''
     });
     setIsModalOpen(true);
   };
@@ -154,7 +126,7 @@ export function HelpdeskView() {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this ticket?')) return;
     try {
-      const res = await fetch(`/api/tickets/${id}`, { method: 'DELETE' });
+      const res = await fetch(\`/api/tickets/\${id}\`, { method: 'DELETE' });
       if (res.ok) fetchTickets();
     } catch (e) {
       console.error(e);
@@ -164,7 +136,7 @@ export function HelpdeskView() {
   const handleRestore = async (id: string) => {
     if (!confirm('Are you sure you want to restore this ticket?')) return;
     try {
-      const res = await fetch(`/api/tickets/${id}/restore`, { method: 'POST' });
+      const res = await fetch(\`/api/tickets/\${id}/restore\`, { method: 'POST' });
       if (res.ok) fetchTickets();
     } catch (e) {
       console.error(e);
@@ -172,11 +144,9 @@ export function HelpdeskView() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
     e.preventDefault();
     try {
-      const url = formMode === 'create' ? '/api/tickets' : `/api/tickets/${currentTicket.id}`;
+      const url = formMode === 'create' ? '/api/tickets' : \`/api/tickets/\${currentTicket.id}\`;
       const method = formMode === 'create' ? 'POST' : 'PUT';
       
       const res = await fetch(url, {
@@ -191,12 +161,10 @@ export function HelpdeskView() {
         fetchDashboard();
       } else {
         const error = await res.json();
-        alert(`Validation Error: \n${error.error?.map ? error.error.map((e:any) => e.message).join('\n') : JSON.stringify(error.error)}`);
+        alert(\`Validation Error: \\n\${error.error?.map ? error.error.map((e:any) => e.message).join('\\n') : JSON.stringify(error.error)}\`);
       }
     } catch (error) {
       console.error(error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -218,7 +186,7 @@ export function HelpdeskView() {
               className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors"
               title="Refresh Data"
             >
-              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={\`w-5 h-5 \${loading ? 'animate-spin' : ''}\`} />
             </button>
             <button 
               onClick={openCreateModal}
@@ -243,14 +211,14 @@ export function HelpdeskView() {
                 { label: 'Waiting Customer', value: dashboard.kpi.waitingCustomerTickets, icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
                 { label: 'Resolved Today', value: dashboard.kpi.resolvedToday, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                 { label: 'Closed Today', value: dashboard.kpi.closedToday, icon: XCircle, color: 'text-slate-600', bg: 'bg-slate-100' },
-                { label: 'SLA Compliance', value: `${dashboard.kpi.slaCompliance}%`, icon: Activity, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                { label: 'SLA Compliance', value: \`\${dashboard.kpi.slaCompliance}%\`, icon: Activity, color: 'text-indigo-600', bg: 'bg-indigo-50' },
                 { label: 'SLA Breach', value: dashboard.kpi.slaBreach, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50' },
-                { label: 'Avg Response', value: `${dashboard.kpi.avgResponseTime}h`, icon: Clock, color: 'text-cyan-600', bg: 'bg-cyan-50' },
-                { label: 'Avg Resolution', value: `${dashboard.kpi.avgResolutionTime}h`, icon: CheckCircle2, color: 'text-teal-600', bg: 'bg-teal-50' },
-                { label: 'Engineer Utilization', value: `${dashboard.kpi.engineerUtilization}%`, icon: Users, color: 'text-violet-600', bg: 'bg-violet-50' },
+                { label: 'Avg Response', value: \`\${dashboard.kpi.avgResponseTime}h\`, icon: Clock, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+                { label: 'Avg Resolution', value: \`\${dashboard.kpi.avgResolutionTime}h\`, icon: CheckCircle2, color: 'text-teal-600', bg: 'bg-teal-50' },
+                { label: 'Engineer Utilization', value: \`\${dashboard.kpi.engineerUtilization}%\`, icon: Users, color: 'text-violet-600', bg: 'bg-violet-50' },
               ].map((kpi, idx) => (
                 <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
-                  <div className={`p-1.5 rounded-lg mb-2 ${kpi.bg} ${kpi.color}`}>
+                  <div className={\`p-1.5 rounded-lg mb-2 \${kpi.bg} \${kpi.color}\`}>
                     <kpi.icon className="w-4 h-4" />
                   </div>
                   <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 line-clamp-1">{kpi.label}</h3>
@@ -292,7 +260,7 @@ export function HelpdeskView() {
                     <PieChart>
                       <Pie data={dashboard.charts.statusTicket} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                         {dashboard.charts.statusTicket.map((entry:any, index:number) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={\`cell-\${index}\`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <RechartsTooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
@@ -313,7 +281,7 @@ export function HelpdeskView() {
                     <PieChart>
                       <Pie data={dashboard.charts.categoryTicket} cx="50%" cy="50%" outerRadius={80} dataKey="value">
                         {dashboard.charts.categoryTicket.map((entry:any, index:number) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={\`cell-\${index}\`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <RechartsTooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
@@ -333,7 +301,7 @@ export function HelpdeskView() {
                     <PieChart>
                       <Pie data={dashboard.charts.priorityTicket} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                         {dashboard.charts.priorityTicket.map((entry:any, index:number) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={\`cell-\${index}\`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <RechartsTooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
@@ -380,7 +348,7 @@ export function HelpdeskView() {
                   className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
-              <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors w-full sm:w-auto ${showFilters ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+              <button onClick={() => setShowFilters(!showFilters)} className={\`flex items-center justify-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors w-full sm:w-auto \${showFilters ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}\`}>
                 <Filter className="w-4 h-4" />
                 Filter
               </button>
@@ -440,31 +408,17 @@ export function HelpdeskView() {
                   <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-500">No records found. Click "Create Ticket" to get started.</td></tr>
                 ) : (
                   tickets.map(ticket => (
-                    <tr key={ticket.id} className={`hover:bg-slate-50 transition-colors ${ticket.deletedAt ? 'opacity-50' : ''}`}>
+                    <tr key={ticket.id} className={\`hover:bg-slate-50 transition-colors \${ticket.deletedAt ? 'opacity-50' : ''}\`}>
                       <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">{ticket.ticketNumber}</td>
                       <td className="px-6 py-4 font-medium text-slate-900">{ticket.title}</td>
                       <td className="px-6 py-4 text-slate-600">{references.customers.find((c:any) => c.id === ticket.customerId)?.name || '-'}</td>
                       <td className="px-6 py-4">
-                        {(() => {
-                          const priorityName = references.priorities.find((p:any) => p.id === ticket.priorityId)?.name || 'Normal';
-                          return (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase ${getPriorityColor(priorityName)}`}>
-                               {priorityName}
-                            </span>
-                          );
-                        })()}
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase bg-slate-100 text-slate-600">
+                           {references.priorities.find((p:any) => p.id === ticket.priorityId)?.name || 'Normal'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-slate-600">{references.employees.find((e:any) => e.id === ticket.assignedTo)?.name || 'Unassigned'}</td>
-                      <td className="px-6 py-4">
-                        {(() => {
-                          const statusName = references.statuses.find((s:any) => s.id === ticket.statusId)?.name || 'New';
-                          return (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase ${getStatusColor(statusName)}`}>
-                               {statusName}
-                            </span>
-                          );
-                        })()}
-                      </td>
+                      <td className="px-6 py-4 text-slate-600">{references.statuses.find((s:any) => s.id === ticket.statusId)?.name || 'New'}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
                           <button onClick={() => openDetailModal(ticket)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="View"><Eye className="w-4 h-4" /></button>
@@ -517,31 +471,31 @@ export function HelpdeskView() {
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
-                <input type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                <input required type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                <textarea rows={4} className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
+                <textarea required rows={4} className="w-full p-2 border border-slate-200 rounded-lg text-sm" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
               </div>
               
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Customer</label>
-                  <select className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.customerId} onChange={e => setFormData({...formData, customerId: e.target.value})}>
+                  <select required className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.customerId} onChange={e => setFormData({...formData, customerId: e.target.value})}>
                     <option value="">Select Customer</option>
                     {references.customers.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">PIC (Reported By)</label>
-                  <select className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.reportedBy} onChange={e => setFormData({...formData, reportedBy: e.target.value})}>
+                  <select required className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.reportedBy} onChange={e => setFormData({...formData, reportedBy: e.target.value})}>
                     <option value="">Select PIC</option>
                     {references.employees.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Asset</label>
-                  <select className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.assetId} onChange={e => setFormData({...formData, assetId: e.target.value})}>
+                  <select required className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.assetId} onChange={e => setFormData({...formData, assetId: e.target.value})}>
                     <option value="">Select Asset</option>
                     {references.assets.map((a:any) => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>
@@ -551,18 +505,14 @@ export function HelpdeskView() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-                  <select className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.categoryId} onChange={e => {
-                      const newCat = e.target.value;
-                      const defaultSub = references.subCategories.find((s:any)=>s.categoryId === newCat)?.id || '';
-                      setFormData({...formData, categoryId: newCat, subCategoryId: defaultSub});
-                    }}>
+                  <select required className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.categoryId} onChange={e => setFormData({...formData, categoryId: e.target.value, subCategoryId: ''})}>
                     <option value="">Select Category</option>
                     {references.categories.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Subcategory</label>
-                  <select className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.subCategoryId} onChange={e => setFormData({...formData, subCategoryId: e.target.value})}>
+                  <select required className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.subCategoryId} onChange={e => setFormData({...formData, subCategoryId: e.target.value})}>
                     <option value="">Select Subcategory</option>
                     {references.subCategories.filter((sc:any)=>sc.categoryId === formData.categoryId).map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -572,21 +522,21 @@ export function HelpdeskView() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
-                  <select className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.priorityId} onChange={e => setFormData({...formData, priorityId: e.target.value})}>
+                  <select required className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.priorityId} onChange={e => setFormData({...formData, priorityId: e.target.value})}>
                     <option value="">Select Priority</option>
                     {references.priorities.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Impact</label>
-                  <select className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.impactId} onChange={e => setFormData({...formData, impactId: e.target.value})}>
+                  <select required className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.impactId} onChange={e => setFormData({...formData, impactId: e.target.value})}>
                     <option value="">Select Impact</option>
                     {references.impacts.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Urgency</label>
-                  <select className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.urgencyId} onChange={e => setFormData({...formData, urgencyId: e.target.value})}>
+                  <select required className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.urgencyId} onChange={e => setFormData({...formData, urgencyId: e.target.value})}>
                     <option value="">Select Urgency</option>
                     {references.urgencies.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -603,7 +553,7 @@ export function HelpdeskView() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Assign To Engineer</label>
-                  <select className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.assignedTo} onChange={e => setFormData({...formData, assignedTo: e.target.value})}>
+                  <select required className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white" value={formData.assignedTo} onChange={e => setFormData({...formData, assignedTo: e.target.value})}>
                     <option value="">Unassigned</option>
                     {references.employees.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -684,3 +634,6 @@ export function HelpdeskView() {
     </div>
   );
 }
+`
+
+fs.writeFileSync(file, newCode);

@@ -10,6 +10,7 @@ import { db } from "./src/db/index";
 import * as schema from "./src/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import ticketRoutes from "./src/routes/ticketRoutes";
 import { loginSchema, employeeSchema, salesOrderSchema, projectSchema } from "./src/validations";
 import { mockEmployees, mockAttendance, mockPayroll, mockTransactions, mockSalesOrders, mockProducts, mockProductionOrders, mockProjects } from "./src/seedData";
 
@@ -564,6 +565,8 @@ app.get('/api/auth/me', (req, res) => {
   createGetRoute("/api/leads", schema.leads);
   createPostRoute("/api/leads", schema.leads);
   createGetRoute("/api/activities", schema.activities);
+
+  app.use("/api/tickets", ticketRoutes);
   createPostRoute("/api/activities", schema.activities);
   
   app.post("/api/tasks/:id/approve", async (req, res) => {
