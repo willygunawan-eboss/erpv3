@@ -38,8 +38,13 @@ export function EmployeeDetailModal({ employee, onClose }: { employee: any, onCl
     try {
       const res = await fetch(`/api/employees/${employee.id}/${tabId}`);
       if (res.ok) {
-        const json = await res.json();
-        setData((prev: any) => ({ ...prev, [tabId]: json.data }));
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const json = await res.json();
+          setData((prev: any) => ({ ...prev, [tabId]: json.data }));
+        } else {
+          setData((prev: any) => ({ ...prev, [tabId]: [] }));
+        }
       }
     } catch (error) {
       console.error(error);
@@ -76,27 +81,40 @@ export function EmployeeDetailModal({ employee, onClose }: { employee: any, onCl
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 md:p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
+        <div className="flex items-start md:items-center justify-between p-4 md:p-6 border-b border-slate-100 gap-2 relative">
+          <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1 pr-10">
+            <div className="w-10 h-10 md:w-12 md:h-12 flex-shrink-0 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-base md:text-lg">
               {employee.name.charAt(0)}
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">{employee.name}</h2>
-              <p className="text-sm text-slate-500">{employee.id} • {employee.role} • {employee.department}</p>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg md:text-xl font-bold text-slate-900 truncate">{employee.name}</h2>
+              <p className="text-xs md:text-sm text-slate-500 truncate">{employee.id} • {employee.role} • {employee.department}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+          <button onClick={onClose} className="absolute right-3 top-3 md:relative md:right-auto md:top-auto p-2 flex-shrink-0 hover:bg-slate-100 rounded-full transition-colors z-10 bg-white md:bg-transparent shadow-sm md:shadow-none border border-slate-200 md:border-transparent">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar Tabs */}
-          <div className="w-64 border-r border-slate-100 bg-slate-50/50 overflow-y-auto p-4 space-y-1">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+          {/* Mobile Tabs Dropdown */}
+          <div className="md:hidden p-4 border-b border-slate-100 bg-slate-50">
+            <select 
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value)}
+              className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm"
+            >
+              {tabs.map(tab => (
+                <option key={tab.id} value={tab.id}>{tab.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Desktop Sidebar Tabs */}
+          <div className="hidden md:block w-64 border-r border-slate-100 bg-slate-50/50 overflow-y-auto p-4 space-y-1 hide-scrollbar">
             {tabs.map(tab => (
               <button
                 key={tab.id}
@@ -107,50 +125,50 @@ export function EmployeeDetailModal({ employee, onClose }: { employee: any, onCl
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-blue-600' : 'text-slate-400'}`} />
-                {tab.label}
+                <tab.icon className={`w-4 h-4 flex-shrink-0 ${activeTab === tab.id ? 'text-blue-600' : 'text-slate-400'}`} />
+                <span className="whitespace-nowrap">{tab.label}</span>
               </button>
             ))}
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="flex justify-between items-center mb-6">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-3 sm:gap-0">
               <h3 className="text-lg font-bold text-slate-900">{tabs.find(t => t.id === activeTab)?.label} Information</h3>
               {activeTab !== 'profile' && activeTab !== 'attendance' && (
-                <button className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors">
+                <button className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors w-full sm:w-auto">
                   + Add Record
                 </button>
               )}
             </div>
 
             {activeTab === 'profile' ? (
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Full Name</label>
-                    <p className="font-medium text-slate-900 mt-1">{employee.name}</p>
+                    <label className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Full Name</label>
+                    <p className="font-medium text-slate-900 mt-1 break-words">{employee.name}</p>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</label>
-                    <p className="font-medium text-slate-900 mt-1">{employee.email}</p>
+                    <label className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</label>
+                    <p className="font-medium text-slate-900 mt-1 break-words">{employee.email}</p>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Join Date</label>
+                    <label className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Join Date</label>
                     <p className="font-medium text-slate-900 mt-1">{employee.joinDate}</p>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</label>
+                    <label className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</label>
                     <p className="font-medium text-slate-900 mt-1">{employee.role}</p>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Department</label>
+                    <label className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Department</label>
                     <p className="font-medium text-slate-900 mt-1">{employee.department}</p>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</label>
+                    <label className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</label><br/>
                     <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium mt-1 ${
                       employee.status === 'Active' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20' : 
                       'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20'
@@ -161,7 +179,7 @@ export function EmployeeDetailModal({ employee, onClose }: { employee: any, onCl
                 </div>
               </div>
             ) : activeTab === 'attendance' ? (
-               <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200 mt-4">Attendance data is managed in the main Attendance tab.</div>
+               <div className="p-6 md:p-8 text-center text-sm md:text-base text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200 mt-4">Attendance data is managed in the main Attendance tab.</div>
             ) : (
               renderTable(activeTab)
             )}
